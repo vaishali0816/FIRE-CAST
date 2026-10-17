@@ -49,3 +49,4 @@ python forecast_pipeline.py
    ```bash
    jupyter notebook wildfire_forecasting.ipynb
    ```
+.
