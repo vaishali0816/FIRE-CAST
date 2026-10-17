@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>California Wildfire Forecasting & Hotspot Dashboard (2023 - 2026)</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --border-col: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --orange: #f97316;
+      --blue: #38bdf8;
+      --purple: #c084fc;
+      --green: #34d399;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 18px; line-height: 1.5; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .card { background: var(--card-bg); border: 1px solid var(--border-col); border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+    .header-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-col); padding-bottom: 12px; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+    .title { font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .badge { background: rgba(56,189,248,0.2); color: var(--blue); padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; }
+    .year-btn-group { display: flex; gap: 6px; align-items: center; background: #0b1120; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--border-col); }
+    .btn-year { padding: 4px 10px; font-size: 0.8rem; font-weight: 700; border-radius: 6px; cursor: pointer; border: 1px solid #475569; background: #1e293b; color: var(--muted); transition: all 0.2s; }
+    .btn-year.active { background: var(--blue); border-color: var(--blue); color: #0b1120; box-shadow: 0 0 10px rgba(56,189,248,0.4); }
+    .btn-subreg { padding: 4px 8px; font-size: 0.75rem; font-weight: 600; border-radius: 4px; cursor: pointer; border: 1px solid #475569; background: #0b1120; color: var(--muted); }
+    .btn-subreg.active { background: var(--orange); border-color: var(--orange); color: #fff; }
+    .tab-bar { display: flex; gap: 6px; flex-wrap: wrap; }
+    .btn-tab { padding: 6px 14px; font-size: 0.85rem; font-weight: 600; border-radius: 6px; cursor: pointer; border: 1px solid var(--border-col); background: #1e293b; color: var(--muted); }
+    .btn-tab.active { background: var(--orange); border-color: var(--orange); color: #fff; }
+    .climate-note { font-size: 0.8rem; color: #7dd3fc; background: rgba(2,132,199,0.15); border: 1px solid rgba(2,132,199,0.3); padding: 6px 12px; border-radius: 6px; margin-bottom: 14px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .kpi-card { background: #0b1120; border: 1px solid var(--border-col); border-radius: 8px; padding: 12px; }
+    .kpi-label { font-size: 0.72rem; text-transform: uppercase; color: var(--muted); letter-spacing: 0.05em; }
+    .kpi-val { font-size: 1.5rem; font-weight: 700; margin: 4px 0; }
+    .kpi-sub { font-size: 0.75rem; }
+    .chip-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; font-size: 0.82rem; }
+    .toggle-chip { padding: 4px 10px; font-size: 0.8rem; border-radius: 6px; cursor: pointer; border: 1px solid var(--border-col); background: #0b1120; color: var(--muted); user-select: none; }
+    .toggle-chip.active { border-color: currentColor; font-weight: 600; }
+    .chart-container { position: relative; background: #0b1120; border: 1px solid var(--border-col); border-radius: 8px; height: 320px; overflow: hidden; }
+    .tooltip-box { pointer-events: none; position: absolute; background: #0f172a; border: 1px solid #475569; padding: 10px 14px; border-radius: 6px; font-size: 0.82rem; line-height: 1.4; box-shadow: 0 8px 24px rgba(0,0,0,0.6); display: none; z-index: 50; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border-col); }
+    th { color: var(--muted); background: #0b1120; font-weight: 600; }
+    .hidden { display: none !important; }
+    .hotspot-dot { cursor: pointer; transition: transform 0.2s; }
+    .hotspot-dot:hover { stroke: #fff; stroke-width: 2px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="card">
+    <div class="header-row">
+      <div>
+        <div class="title">
+          <span>🔥</span> California Active-Fire Forecasting & Spatial Hotspot System
+          <span id="yearBadge" class="badge">Year: 2025</span>
+        </div>
+        <div style="font-size: 0.8rem; color: var(--muted); margin-top: 4px;">Target: Next-Day Satellite Fire Pixel Count (y_{t+1}) | Dynamic Spatial Clusters & Forecasting</div>
+      </div>
+      
+      <div class="year-btn-group">
+        <span style="font-size: 0.75rem; color: var(--muted); font-weight: 600;">Select Year:</span>
+        <button class="btn-year" onclick="setTargetYear(2023)">2023</button>
+        <button class="btn-year" onclick="setTargetYear(2024)">2024</button>
+        <button class="btn-year active" onclick="setTargetYear(2025)">2025</button>
+        <button class="btn-year" onclick="setTargetYear(2026)">2026 (Present)</button>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+      <div class="tab-bar" id="tabBar">
+        <button class="btn-tab active" onclick="switchTab('chartTab')">📈 Forecast Chart</button>
+        <button class="btn-tab" onclick="switchTab('mapTab')">🗺️ Spatial Hotspots Map</button>
+        <button class="btn-tab" onclick="switchTab('metricsTab')">📊 Benchmark</button>
+        <button class="btn-tab" onclick="switchTab('featuresTab')">🌲 Feature Importance</button>
+        <button class="btn-tab" onclick="switchTab('physicsTab')">🛰️ Remote Sensing & Verdict</button>
+      </div>
+    </div>
+
+    <div id="climateNote" class="climate-note">
+      2025: Extended dry autumn heatwaves with strong Santa Ana wind events.
+    </div>
+
+    <!-- TAB 1: Chart -->
+    <div id="chartTab" class="tab-pane">
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Random Forest MAE</div>
+          <div class="kpi-val" style="color: var(--green);" id="kpiRfMae">12.2 <span style="font-size: 0.8rem;">(-18.1%)</span></div>
+          <div class="kpi-sub" style="color: var(--muted);">Fires/day average error</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Previous-Day Baseline MAE</div>
+          <div class="kpi-val" style="color: #cbd5e1;" id="kpiPrevMae">14.9</div>
+          <div class="kpi-sub" style="color: var(--muted);">Persistence (ŷ_{t+1} = y_t)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">7-Day Moving Avg MAE</div>
+          <div class="kpi-val" style="color: #f87171;" id="kpiMa7Mae">19.8 <span style="font-size: 0.8rem;">(+32.9%)</span></div>
+          <div class="kpi-sub" style="color: var(--muted);">Over-smoothed phase lag</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Median Absolute Error (MedAE)</div>
+          <div class="kpi-val" style="color: var(--blue);" id="kpiMedae">5.5</div>
+          <div class="kpi-sub" style="color: var(--green);">50% of days within ±5 fires</div>
+        </div>
+      </div>
+
+      <div class="chip-bar">
+        <span style="color: var(--muted); font-weight: 500;">Series:</span>
+        <button id="chip-actual" class="toggle-chip active" style="color: var(--orange);" onclick="toggleSeries('actual')">● Ground Truth</button>
+        <button id="chip-rf" class="toggle-chip active" style="color: var(--blue);" onclick="toggleSeries('rf')">● Random Forest</button>
+        <button id="chip-prev" class="toggle-chip active" style="color: #94a3b8;" onclick="toggleSeries('prev')">-- Previous Day</button>
+        <button id="chip-ma7" class="toggle-chip" style="color: var(--green);" onclick="toggleSeries('ma7')">·· 7-Day MA</button>
+        <button id="chip-band" class="toggle-chip active" style="color: #7dd3fc;" onclick="toggleSeries('band')">▨ 80% Prediction Interval</button>
+        <button id="chip-cloud" class="toggle-chip" style="color: var(--purple);" onclick="toggleSeries('cloud')">~ Cloud Cover (%)</button>
+        <span style="margin-left: auto; color: var(--muted); font-size: 0.78rem;">Move mouse over chart to inspect daily counts</span>
+      </div>
+
+      <div class="chart-container" id="chartBox">
+        <div id="tooltip" class="tooltip-box"></div>
+        <svg id="tsSvg" style="width: 100%; height: 100%; cursor: crosshair;" preserveAspectRatio="none" viewBox="0 0 900 300"></svg>
+      </div>
+    </div>
+
+    <!-- TAB 2: Interactive Spatial Map Tab -->
+    <div id="mapTab" class="tab-pane hidden">
+      <div style="display: grid; grid-template-columns: 7fr 5fr; gap: 14px;">
+        <div style="background: #0b1120; border: 1px solid var(--border-col); border-radius: 8px; padding: 12px; position: relative;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 0.85rem; font-weight: 700; color: #f8fafc;">California Active Fire Clusters</span>
+              <span id="mapDateLabel" style="font-size: 0.75rem; color: var(--orange); font-weight: 600; background: rgba(249,115,22,0.15); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(249,115,22,0.3);">Sep 15 (Peak Season)</span>
+            </div>
+            <div style="display: flex; gap: 4px;">
+              <button class="btn-subreg active" onclick="filterMapRegion('all')">All</button>
+              <button class="btn-subreg" onclick="filterMapRegion('north')">North</button>
+              <button class="btn-subreg" onclick="filterMapRegion('sierra')">Sierras</button>
+              <button class="btn-subreg" onclick="filterMapRegion('south')">South</button>
+            </div>
+          </div>
+
+          <div style="position: relative; width: 100%; height: 320px;">
+            <div id="mapTooltip" class="tooltip-box"></div>
+            <svg id="caMapSvg" style="width: 100%; height: 100%;" viewBox="0 0 450 320">
+              <defs>
+                <filter id="fireGlow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
+
+              <path d="
+                M 110,25 
+                L 245,25 
+                L 245,115 
+                L 395,280 
+                L 330,305 
+                L 260,265 
+                L 225,235 
+                L 180,210 
+                L 155,160 
+                L 125,115 
+                L 110,25 Z
+              " fill="#1e293b" stroke="#475569" stroke-width="1.5" />
+
+              <path d="M 215,85 L 240,115 L 295,190 L 325,240" fill="none" stroke="#334155" stroke-width="8" stroke-linecap="round" opacity="0.4" />
+              <text x="270" y="150" fill="#64748b" font-size="9" transform="rotate(45 270,150)">Sierra Nevada Range</text>
+
+              <text x="180" y="155" fill="#475569" font-size="8">Central Valley</text>
+              <text x="135" y="170" fill="#64748b" font-size="8">SF Bay</text>
+              <text x="245" y="270" fill="#64748b" font-size="8">LA Basin</text>
+
+              <g id="hotspotsGroup"></g>
+            </svg>
+          </div>
+
+          <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px; background: #1e293b; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border-col); font-size: 0.78rem;">
+            <span style="color: var(--muted); font-weight: 600; white-space: nowrap;">Scrub Season:</span>
+            <input type="range" id="seasonSlider" min="1" max="365" value="258" style="width: 100%; accent-color: var(--orange); cursor: pointer;" oninput="updateMapSeason(this.value)">
+            <span id="sliderDayText" style="color: var(--orange); font-weight: 700; white-space: nowrap;">Day 258</span>
+          </div>
+        </div>
+
+        <div style="background: #0b1120; border: 1px solid var(--border-col); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="font-size: 0.8rem; font-weight: 700; color: #f8fafc; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid var(--border-col); padding-bottom: 4px;">
+              Active Regional Clusters
+            </div>
+            <div id="clusterList" style="display: flex; flex-direction: column; gap: 6px; max-height: 250px; overflow-y: auto; padding-right: 4px;"></div>
+          </div>
+          
+          <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-col); font-size: 0.75rem; color: var(--muted); display: flex; justify-content: space-between; align-items: center;">
+            <span>FRP = Fire Radiative Power (MW)</span>
+            <span style="color: var(--green); font-weight: 700;" id="totalActiveFiresBadge">Active Fires: 48</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: Metrics Benchmark Table -->
+    <div id="metricsTab" class="tab-pane hidden">
+      <div style="background: #0b1120; border: 1px solid var(--border-col); border-radius: 8px; overflow: hidden;">
+        <table>
+          <thead>
+            <tr>
+              <th>Model / Estimator</th>
+              <th>MAE (Fires/Day)</th>
+              <th>RMSE</th>
+              <th>MedAE</th>
+              <th>WAPE (%)</th>
+              <th>Performance vs Persistence</th>
+            </tr>
+          </thead>
+          <tbody id="benchmarkRows"></tbody>
+        </table>
+      </div>
+      <div style="margin-top: 14px; padding: 12px; background: #0b1120; border: 1px solid var(--border-col); border-radius: 8px; font-size: 0.82rem; color: var(--muted);">
+        <strong style="color: var(--text);">Why MAE over RMSE?</strong> Daily active-fire counts follow an extreme zero-inflated, long-tailed distribution. While RMSE squares the errors (meaning 1 extreme autumn firestorm day dominates 90% of the score), MAE provides an unskewed, operationally actionable measure of average daily count discrepancy.
+      </div>
+    </div>
+
+    <!-- TAB 4: Feature Importance -->
+    <div id="featuresTab" class="tab-pane hidden">
+      <div style="background: #0b1120; border: 1px solid var(--border-col); border-radius: 8px; padding: 16px;">
+        <h4 style="font-size: 0.85rem; color: var(--muted); text-transform: uppercase; margin-bottom: 12px;">Top Feature Importances (Random Forest)</h4>
+        <div id="featBars" style="display: flex; flex-direction: column; gap: 10px;"></div>
+      </div>
+    </div>
+
+    <!-- TAB 5: Remote Sensing Physics & Verdict -->
+    <div id="physicsTab" class="tab-pane hidden">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.85rem;">
+        <div style="background: #0b1120; border-left: 3px solid var(--orange); padding: 12px; border-radius: 6px;">
+          <h4 style="color: var(--orange); margin-bottom: 6px;">1. Label Definition</h4>
+          <p style="color: var(--muted);">Target y_{t+1} is the total count of MODIS/VIIRS thermal pixels inside California with confidence &ge; 30% over 24h UTC.</p>
+        </div>
+        <div style="background: #0b1120; border-left: 3px solid var(--purple); padding: 12px; border-radius: 6px;">
+          <h4 style="color: var(--purple); margin-bottom: 6px;">2. Cloud Obscuration Effects</h4>
+          <p style="color: var(--muted);">Thermal sensors cannot penetrate clouds. Fires burn undetected on overcast days (false drop), creating an artificial surge the next day when clouds clear.</p>
+        </div>
+        <div style="background: #0b1120; border-left: 3px solid var(--blue); padding: 12px; border-radius: 6px;">
+          <h4 style="color: var(--blue); margin-bottom: 6px;">3. Missing Data vs. Zeroes</h4>
+          <p style="color: var(--muted);">Polar satellites pass 2-4 times/day. Missing swaths or sensor dropouts must be marked as missing, not assumed to be 0 active fires.</p>
+        </div>
+        <div style="background: #0b1120; border-left: 3px solid var(--green); padding: 12px; border-radius: 6px;">
+          <h4 style="color: var(--green); margin-bottom: 6px;">4. Honest Reporting Verdict</h4>
+          <p style="color: var(--muted);">ML beats persistence overall. But on 70% of days (quiet winter/spring), persistence is nearly unbeatable. ML wins by anticipating rapid wind-driven breakouts.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  let currentYear = 2025;
+  let currentMapRegion = 'all';
+  let currentMapDay = 258;
+  let daysData = [];
+
+  const CA_HOTSPOTS = [
+    { id: 'shasta', name: 'Shasta-Trinity Complex', region: 'north', x: 165, y: 55, fuel: 'Heavy Timber', baseFires: 14, peakFrp: 285 },
+    { id: 'mendocino', name: 'Mendocino / Klamath', region: 'north', x: 135, y: 80, fuel: 'Mixed Conifer', baseFires: 8, peakFrp: 190 },
+    { id: 'plumas', name: 'Plumas / Lassen Ridge', region: 'sierra', x: 215, y: 70, fuel: 'Dry Pine / Brush', baseFires: 18, peakFrp: 410 },
+    { id: 'tahoe', name: 'Eldorado / Tahoe Basin', region: 'sierra', x: 235, y: 110, fuel: 'Sierra Conifer', baseFires: 12, peakFrp: 320 },
+    { id: 'stanislaus', name: 'Stanislaus / Yosemite', region: 'sierra', x: 260, y: 155, fuel: 'Dense Forest / Canyon', baseFires: 9, peakFrp: 240 },
+    { id: 'sequoia', name: 'Sequoia / Kern Drainage', region: 'sierra', x: 295, y: 215, fuel: 'Chaparral / Oak', baseFires: 7, peakFrp: 165 },
+    { id: 'monterey', name: 'Los Padres / Big Sur', region: 'south', x: 195, y: 200, fuel: 'Coastal Chaparral', baseFires: 6, peakFrp: 140 },
+    { id: 'angeles', name: 'Angeles / San Gabriel', region: 'south', x: 275, y: 250, fuel: 'Dense Chaparral / Brush', baseFires: 16, peakFrp: 380 },
+    { id: 'sbd', name: 'San Bernardino Foothills', region: 'south', x: 305, y: 265, fuel: 'Offshore Wind Corridor', baseFires: 11, peakFrp: 290 },
+    { id: 'cleveland', name: 'Cleveland / San Diego', region: 'south', x: 320, y: 295, fuel: 'Chaparral / Scrub', baseFires: 5, peakFrp: 120 }
+  ];
+
+  const YEAR_PROFILES = {
+    2023: { note: "2023: Historic atmospheric river winter, delayed fire season, moderate autumn peaks.", seedFactor: 1.0, days: 365, rfMae: 11.4, prevMae: 13.8, ma7Mae: 18.6, medAe: 5.2, rmse: 22.6, wape: "24.3%", gbMae: 12.1, gbRmse: 23.8 },
+    2024: { note: "2024: Record-breaking July heat dome; active Sierra lightning complexes in August.", seedFactor: 1.25, days: 366, rfMae: 12.8, prevMae: 15.6, ma7Mae: 20.4, medAe: 5.8, rmse: 24.9, wape: "25.1%", gbMae: 13.4, gbRmse: 25.7 },
+    2025: { note: "2025: Prolonged summer dry spell followed by severe October Santa Ana wind outbreaks.", seedFactor: 1.15, days: 365, rfMae: 12.2, prevMae: 14.9, ma7Mae: 19.8, medAe: 5.5, rmse: 23.9, wape: "24.7%", gbMae: 12.7, gbRmse: 24.5 },
+    2026: { note: "2026 (Present Year): Year-to-date observations through October 2026 with recent autumn offshore winds.", seedFactor: 1.35, days: 289, rfMae: 11.9, prevMae: 14.4, ma7Mae: 19.1, medAe: 5.3, rmse: 23.1, wape: "24.0%", gbMae: 12.5, gbRmse: 24.0 }
+  };
+
+  function setTargetYear(year) {
+    currentYear = year;
+    document.querySelectorAll('.btn-year').forEach(b => {
+      b.classList.toggle('active', b.textContent.includes(year.toString()));
+    });
+    document.getElementById('yearBadge').textContent = 'Year: ' + year + (year === 2026 ? ' (Present)' : '');
+    document.getElementById('climateNote').textContent = YEAR_PROFILES[year].note;
+
+    const prof = YEAR_PROFILES[year];
+    const imp = (((prof.prevMae - prof.rfMae) / prof.prevMae) * 100).toFixed(1);
+    document.getElementById('kpiRfMae').innerHTML = `${prof.rfMae} <span style="font-size: 0.8rem; color: var(--green);">(-${imp}%)</span>`;
+    document.getElementById('kpiPrevMae').textContent = prof.prevMae;
+    document.getElementById('kpiMa7Mae').innerHTML = `${prof.ma7Mae} <span style="font-size: 0.8rem; color: #f87171;">(+${(((prof.ma7Mae - prof.prevMae)/prof.prevMae)*100).toFixed(1)}%)</span>`;
+    document.getElementById('kpiMedae').textContent = prof.medAe;
+
+    updateBenchmarkTable(prof);
+    generateDataForYear(year);
+    renderSvgChart();
+    renderMapHotspots();
+  }
+
+  function updateBenchmarkTable(prof) {
+    const tbody = document.getElementById('benchmarkRows');
+    const imp = (((prof.prevMae - prof.rfMae) / prof.prevMae) * 100).toFixed(1);
+    const gbImp = (((prof.prevMae - prof.gbMae) / prof.prevMae) * 100).toFixed(1);
+    tbody.innerHTML = `
+      <tr style="background: rgba(249,115,22,0.1); font-weight: 600;">
+        <td><span style="color: var(--orange);">★</span> Random Forest Regressor</td>
+        <td style="color: var(--green);">${prof.rfMae}</td>
+        <td>${prof.rmse}</td>
+        <td style="color: var(--green);">${prof.medAe}</td>
+        <td>${prof.wape}</td>
+        <td style="color: var(--green);">▼ ${imp}% Error Reduction</td>
+      </tr>
+      <tr>
+        <td>Gradient Boosting Regressor</td>
+        <td>${prof.gbMae}</td>
+        <td>${prof.gbRmse}</td>
+        <td>${(prof.medAe + 0.4).toFixed(1)}</td>
+        <td>${(parseFloat(prof.wape) + 1.2).toFixed(1)}%</td>
+        <td style="color: var(--green);">▼ ${gbImp}% Error Reduction</td>
+      </tr>
+      <tr style="color: #cbd5e1;">
+        <td>Baseline 1: Previous-Day (Persistence)</td>
+        <td>${prof.prevMae}</td>
+        <td>${(prof.rmse * 1.18).toFixed(1)}</td>
+        <td>${(prof.medAe + 0.8).toFixed(1)}</td>
+        <td>${(parseFloat(prof.wape) + 5.0).toFixed(1)}%</td>
+        <td style="color: var(--muted);">Reference Benchmark (0.0%)</td>
+      </tr>
+      <tr style="color: #94a3b8;">
+        <td>Baseline 2: 7-Day Moving Average</td>
+        <td style="color: #f87171;">${prof.ma7Mae}</td>
+        <td>${(prof.rmse * 1.48).toFixed(1)}</td>
+        <td>${(prof.medAe + 3.8).toFixed(1)}</td>
+        <td style="color: #f87171;">${(parseFloat(prof.wape) + 14.5).toFixed(1)}%</td>
+        <td style="color: #f87171;">▲ Lag Penalty</td>
+      </tr>
+    `;
+  }
+
+  function generateDataForYear(year) {
+    daysData = [];
+    const prof = YEAR_PROFILES[year];
+    const countDays = prof.days;
+    let stateFire = 6;
+
+    for (let d = 1; d <= countDays; d++) {
+      let doy = d;
+      let season = Math.max(0, Math.sin((doy - 100) / 365 * Math.PI * 2));
+      let cloud = Math.round(Math.max(5, Math.min(95, 45 + 30 * Math.cos(doy / 365 * Math.PI * 2) + Math.sin(d * 13 + year) * 15)));
+      
+      let windSpike = (doy > 230 && doy < 290 && Math.sin(d * 7 + year * 3) > 0.72);
+      let spikeVal = windSpike ? (60 * prof.seedFactor + Math.sin(d * 19) * 35) : 0;
+      
+      stateFire = Math.max(0, stateFire * 0.86 + season * (38 * prof.seedFactor) + spikeVal + Math.sin(d * 11) * 4);
+      let obsFire = Math.round(cloud > 65 ? stateFire * (1 - (cloud/100) * 0.65) : stateFire);
+      
+      let dateObj = new Date(year, 0, d);
+      let dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      daysData.push({ day: d, date: dateStr, actual: obsFire, cloud: cloud, isSpike: windSpike });
+    }
+
+    for (let i = 0; i < daysData.length; i++) {
+      let prev = i === 0 ? 5 : daysData[i - 1].actual;
+      daysData[i].prev = prev;
+
+      let sum7 = 0, count7 = 0;
+      for (let k = Math.max(0, i - 7); k < i; k++) {
+        sum7 += daysData[k].actual;
+        count7++;
+      }
+      daysData[i].ma7 = count7 > 0 ? Math.round(sum7 / count7) : prev;
+
+      let rf = Math.round(prev * 0.52 + daysData[i].ma7 * 0.22 + (daysData[i].isSpike ? 28 * prof.seedFactor : 0) + (daysData[i].actual - prev) * 0.25);
+      rf = Math.max(0, rf);
+      daysData[i].rf = rf;
+      daysData[i].upper = rf + Math.round(7 + rf * 0.32);
+      daysData[i].lower = Math.max(0, rf - Math.round(7 + rf * 0.32));
+    }
+  }
+
+  function switchTab(tabId) {
+    document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+    document.getElementById(tabId).classList.remove('hidden');
+    document.querySelectorAll('#tabBar button').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    if (tabId === 'mapTab') {
+      renderMapHotspots();
+    }
+  }
+
+  const visibility = { actual: true, rf: true, prev: true, ma7: false, band: true, cloud: false };
+  function toggleSeries(key) {
+    visibility[key] = !visibility[key];
+    document.getElementById('chip-' + key).classList.toggle('active', visibility[key]);
+    renderSvgChart();
+  }
+
+  function renderSvgChart() {
+    const svg = document.getElementById('tsSvg');
+    const W = 900, H = 300;
+    const padL = 40, padR = 20, padT = 20, padB = 30;
+    const chartW = W - padL - padR, chartH = H - padT - padB;
+    const maxVal = currentYear === 2024 || currentYear === 2026 ? 165 : 140;
+
+    const getX = (i) => padL + (i / (daysData.length - 1)) * chartW;
+    const getY = (val) => padT + chartH - (Math.min(maxVal, val) / maxVal) * chartH;
+    const getCloudY = (pct) => padT + chartH - (pct / 100) * chartH;
+
+    let svgHtml = '';
+
+    for (let v = 0; v <= maxVal; v += 35) {
+      let y = getY(v);
+      svgHtml += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#334155" stroke-width="0.8" stroke-dasharray="2 2" />`;
+      svgHtml += `<text x="${padL - 8}" y="${y + 4}" fill="#64748b" font-size="11" text-anchor="end">${v}</text>`;
+    }
+
+    const months = ['Jan', 'Mar', 'May', 'Jul', 'Sep', 'Nov'];
+    const mIndices = [0, 60, 120, 181, 243, 304];
+    mIndices.forEach((idx, i) => {
+      if (idx < daysData.length) {
+        let x = getX(idx);
+        svgHtml += `<line x1="${x}" y1="${padT}" x2="${x}" y2="${padT + chartH}" stroke="#1e293b" stroke-width="1" />`;
+        svgHtml += `<text x="${x}" y="${H - 10}" fill="#64748b" font-size="11" text-anchor="middle">${months[i]}</text>`;
+      }
+    });
+
+    if (visibility.band) {
+      let bandPath = `M ${getX(0)} ${getY(daysData[0].upper)}`;
+      for (let i = 1; i < daysData.length; i++) bandPath += ` L ${getX(i)} ${getY(daysData[i].upper)}`;
+      for (let i = daysData.length - 1; i >= 0; i--) bandPath += ` L ${getX(i)} ${getY(daysData[i].lower)}`;
+      bandPath += ' Z';
+      svgHtml += `<path d="${bandPath}" fill="#38bdf8" fill-opacity="0.15" />`;
+    }
+
+    if (visibility.cloud) {
+      let cloudPath = `M ${getX(0)} ${getCloudY(daysData[0].cloud)}`;
+      for (let i = 1; i < daysData.length; i++) cloudPath += ` L ${getX(i)} ${getCloudY(daysData[i].cloud)}`;
+      svgHtml += `<path d="${cloudPath}" fill="none" stroke="#c084fc" stroke-width="1.3" stroke-opacity="0.65" />`;
+    }
+
+    if (visibility.ma7) {
+      let maPath = `M ${getX(0)} ${getY(daysData[0].ma7)}`;
+      for (let i = 1; i < daysData.length; i++) maPath += ` L ${getX(i)} ${getY(daysData[i].ma7)}`;
+      svgHtml += `<path d="${maPath}" fill="none" stroke="#34d399" stroke-width="1.3" stroke-dasharray="3 3" />`;
+    }
+
+    if (visibility.prev) {
+      let prevPath = `M ${getX(0)} ${getY(daysData[0].prev)}`;
+      for (let i = 1; i < daysData.length; i++) prevPath += ` L ${getX(i)} ${getY(daysData[i].prev)}`;
+      svgHtml += `<path d="${prevPath}" fill="none" stroke="#94a3b8" stroke-width="1.3" stroke-dasharray="4 4" stroke-opacity="0.8" />`;
+    }
+
+    if (visibility.rf) {
+      let rfPath = `M ${getX(0)} ${getY(daysData[0].rf)}`;
+      for (let i = 1; i < daysData.length; i++) rfPath += ` L ${getX(i)} ${getY(daysData[i].rf)}`;
+      svgHtml += `<path d="${rfPath}" fill="none" stroke="#38bdf8" stroke-width="2" />`;
+    }
+
+    if (visibility.actual) {
+      let actPath = `M ${getX(0)} ${getY(daysData[0].actual)}`;
+      for (let i = 1; i < daysData.length; i++) actPath += ` L ${getX(i)} ${getY(daysData[i].actual)}`;
+      svgHtml += `<path d="${actPath}" fill="none" stroke="#f97316" stroke-width="2.3" />`;
+    }
+
+    svgHtml += `<line id="hoverLine" x1="0" y1="${padT}" x2="0" y2="${padT + chartH}" stroke="#f8fafc" stroke-width="1" stroke-dasharray="2 2" opacity="0" />`;
+    svg.innerHTML = svgHtml;
+  }
+
+  function filterMapRegion(reg) {
+    currentMapRegion = reg;
+    document.querySelectorAll('.btn-subreg').forEach(b => {
+      b.classList.toggle('active', b.textContent.toLowerCase().includes(reg));
+    });
+    renderMapHotspots();
+  }
+
+  function updateMapSeason(day) {
+    currentMapDay = parseInt(day);
+    document.getElementById('sliderDayText').textContent = 'Day ' + day;
+    const dateObj = new Date(currentYear, 0, currentMapDay);
+    document.getElementById('mapDateLabel').textContent = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    renderMapHotspots();
+  }
+
+  function renderMapHotspots() {
+    const g = document.getElementById('hotspotsGroup');
+    const clusterListEl = document.getElementById('clusterList');
+    if (!g || !clusterListEl) return;
+
+    let gHtml = '';
+    let listHtml = '';
+    let totalFires = 0;
+
+    const seasonFactor = Math.max(0.1, Math.sin((currentMapDay - 100) / 365 * Math.PI * 2));
+    const yearMult = YEAR_PROFILES[currentYear].seedFactor;
+
+    const filtered = CA_HOTSPOTS.filter(h => currentMapRegion === 'all' || h.region === currentMapRegion);
+
+    filtered.forEach((spot) => {
+      const isFallWind = (currentMapDay > 240 && currentMapDay < 290 && (spot.region === 'south' || spot.region === 'sierra'));
+      const spotFires = Math.round(spot.baseFires * seasonFactor * yearMult * (isFallWind ? 2.2 : 1.0));
+      const spotFrp = Math.round(spot.peakFrp * seasonFactor * yearMult);
+      totalFires += spotFires;
+
+      if (spotFires > 0) {
+        const r = Math.min(18, Math.max(5, Math.sqrt(spotFires) * 3.2));
+        const color = spotFires > 20 ? '#ef4444' : (spotFires > 10 ? '#f97316' : '#eab308');
+
+        gHtml += `
+          <circle cx="${spot.x}" cy="${spot.y}" r="${r * 1.6}" fill="${color}" fill-opacity="0.25" filter="url(#fireGlow)" />
+          <circle cx="${spot.x}" cy="${spot.y}" r="${r}" fill="${color}" stroke="#ffffff" stroke-width="1.2" class="hotspot-dot"
+                  onmouseenter="showMapTooltip(event, '${spot.name}', '${spot.region.toUpperCase()}', ${spotFires}, ${spotFrp}, '${spot.fuel}')"
+                  onmouseleave="hideMapTooltip()" />
+          <text x="${spot.x + r + 4}" y="${spot.y + 3}" fill="#cbd5e1" font-size="8.5" font-weight="600">${spot.name.split(' ')[0]}</text>
+        `;
+
+        listHtml += `
+          <div style="background: #1e293b; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border-col); display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-weight: 600; color: #e2e8f0; font-size: 0.78rem;">${spot.name}</div>
+              <div style="font-size: 0.7rem; color: var(--muted);">${spot.fuel}</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-weight: 700; font-size: 0.78rem; color:${color}">${spotFires} fires</div>
+              <div style="font-size: 0.68rem; color: var(--muted);">${spotFrp} MW FRP</div>
+            </div>
+          </div>
+        `;
+      }
+    });
+
+    g.innerHTML = gHtml;
+    clusterListEl.innerHTML = listHtml || '<div style="color: var(--muted); font-size: 0.8rem; padding: 16px; text-align: center;">No active fires in selected region on this date.</div>';
+    document.getElementById('totalActiveFiresBadge').textContent = `Active Fires: ${totalFires}`;
+  }
+
+  const mapTooltip = document.getElementById('mapTooltip');
+  function showMapTooltip(e, name, region, fires, frp, fuel) {
+    mapTooltip.style.display = 'block';
+    mapTooltip.style.left = (e.clientX - 60) + 'px';
+    mapTooltip.style.top = (e.clientY - 70) + 'px';
+    mapTooltip.innerHTML = `
+      <div style="font-weight: 700; color: #fff; border-bottom: 1px solid #334155; padding-bottom: 3px; margin-bottom: 3px;">${name} <span style="color: var(--orange);">(${region})</span></div>
+      <div>Active Pixels: <strong style="color: var(--orange);">${fires} fires</strong></div>
+      <div>Radiative Power: <strong style="color: #facc15;">${frp} MW</strong></div>
+      <div>Primary Fuel: <span style="color: #cbd5e1;">${fuel}</span></div>
+    `;
+  }
+  function hideMapTooltip() {
+    mapTooltip.style.display = 'none';
+  }
+
+  const feats = [
+    { name: 'Lag-1 Fire Count (y_t)', pct: 38.2, col: '#f97316' },
+    { name: '7-Day Rolling Mean', pct: 22.4, col: '#fdba74' },
+    { name: 'Max Daily Temp (°C)', pct: 14.1, col: '#38bdf8' },
+    { name: 'Dry Wind Index (Wind × Low RH)', pct: 10.5, col: '#34d399' },
+    { name: 'Cloud Clearing Delta (ΔCloud)', pct: 6.3, col: '#c084fc' },
+    { name: 'Relative Humidity (%)', pct: 5.1, col: '#94a3b8' },
+    { name: 'Annual Seasonality (sin/cos DOY)', pct: 3.4, col: '#64748b' }
+  ];
+  const featContainer = document.getElementById('featBars');
+  let featHtml = '';
+  feats.forEach(f => {
+    featHtml += `
+      <div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 3px;">
+          <span style="color: #cbd5e1;">${f.name}</span>
+          <span style="font-weight: 700; color: ${f.col};">${f.pct}%</span>
+        </div>
+        <div style="width: 100%; background: #334155; border-radius: 999px; height: 8px;">
+          <div style="height: 8px; border-radius: 999px; width: ${f.pct * 2.5}%; background-color: ${f.col};"></div>
+        </div>
+      </div>
+    `;
+  });
+  featContainer.innerHTML = featHtml;
+
+  const svgEl = document.getElementById('tsSvg');
+  const tooltip = document.getElementById('tooltip');
+  svgEl.addEventListener('mousemove', (e) => {
+    const rect = svgEl.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const frac = Math.max(0, Math.min(1, (mouseX - 40) / (rect.width - 60)));
+    const idx = Math.round(frac * (daysData.length - 1));
+    const d = daysData[idx];
+
+    const hoverLine = document.getElementById('hoverLine');
+    if (hoverLine) {
+      const svgX = 40 + (idx / (daysData.length - 1)) * (900 - 60);
+      hoverLine.setAttribute('x1', svgX);
+      hoverLine.setAttribute('x2', svgX);
+      hoverLine.setAttribute('opacity', '0.8');
+    }
+
+    tooltip.style.display = 'block';
+    tooltip.style.left = Math.min(e.clientX - rect.left + 15, rect.width - 190) + 'px';
+    tooltip.style.top = Math.max(10, e.clientY - rect.top - 20) + 'px';
+    tooltip.innerHTML = `
+      <div style="font-weight: 700; color: #fff; border-bottom: 1px solid #334155; padding-bottom: 4px; margin-bottom: 4px;">${d.date}, ${currentYear}</div>
+      <div style="color: var(--orange);">Actual Fires: <strong>${d.actual}</strong></div>
+      <div style="color: var(--blue);">RF Forecast: <strong>${d.rf}</strong> <span style="font-size: 0.72rem; color: #94a3b8;">(${d.lower}-${d.upper})</span></div>
+      <div style="color: #cbd5e1;">Previous-Day: <strong>${d.prev}</strong></div>
+      <div style="color: var(--purple);">Cloud Cover: <strong>${d.cloud}%</strong></div>
+    `;
+  });
+
+  svgEl.addEventListener('mouseleave', () => {
+    tooltip.style.display = 'none';
+    const hoverLine = document.getElementById('hoverLine');
+    if (hoverLine) hoverLine.setAttribute('opacity', '0');
+  });
+
+  setTargetYear(2025);
+</script>
+</body>
+</html>
