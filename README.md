@@ -1,7 +1,7 @@
 # Wildfire Next-Day Active-Fire Count Prediction
 
 A beginner-friendly, production-grade time-series forecasting solution designed to predict next-day active-fire detection counts for the **State of California**.
-🔗 **Live Demo:** [Open Interactive Dashboard](https://<your-username>.github.io/<your-repo-name>/)
+🔗 **Live Demo: https://vaishali0816.github.io/FIRE-CAST/
 ---
 
 ## 📁 Project Structure
